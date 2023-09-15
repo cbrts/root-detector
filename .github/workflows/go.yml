@@ -1,0 +1,44 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+jobs:
+  build:
+    strategy:
+      matrix:
+          os: [ubuntu-latest]
+          container-runtime: ['', 'containerd']
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Tools for MacOs
+        if: matrix.os == 'macos-10.15'
+        run: |
+          brew install docker-machine docker
+          sudo docker --version
+          VBoxManage --version
+          sysctl hw.physicalcpu hw.logicalcpu 
+        continue-on-error: true
+      - name: Install Kubectl
+        uses: azure/setup-kubectl@v1
+      - name: Start minikube
+        uses: medyagh/setup-minikube@latest
+        with:
+          container-runtime: ${{ matrix.container-runtime }}
+      - uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+  
+      - name: Build
+        run: go build -v ./...
+  
+      - name: Test
+        run: go test -v ./...
